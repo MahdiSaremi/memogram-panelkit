@@ -54,6 +54,7 @@ class PanelKitServiceProvider extends ServiceProvider
         $langPath = __DIR__ . '/../../lang';
         $this->publishes([$langPath => lang_path('vendor/panelkit')], ['lang', 'panelkit:lang']);
 
+
         // todo
         // if (is_dir($langPath)) {
         $this->loadTranslationsFrom($langPath, 'panelkit');
