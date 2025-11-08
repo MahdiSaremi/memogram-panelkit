@@ -3,7 +3,7 @@
 ## Installation
 
 ```shell
-composer require mmb/panelkit
+composer require memogram/panelkit
 ```
 
 ### Publish
@@ -15,19 +15,20 @@ php artisan vendor:publish --tag="panelkit:config"
 php artisan vendor:publish --tag="panelkit:lang"
 ```
 
-## Every
-Every is a service to notify the users by a message
+## Broadcast
+Broadcast is a service to notify the users by a message
 
 ### Ready To Use
 Add these lines to show global sending method actions:
 
 ```php
-$menu->schema([
-    [
-        $menu->key("Forward", fn () => EveryForwardForm::make()->request()),
-        $menu->key("Message", fn () => EveryMessageForm::make()->request()),
-    ]
-])
+return messageResponse()
+    ->schema([
+        [
+            key("Forward", fn () => open([BroadcastForm::class, 'forwardForm'])),
+            key("Message", fn () => open([BroadcastForm::class, 'messageForm'])),
+        ]
+    ]);
 ```
 
 
@@ -36,53 +37,43 @@ $menu->schema([
 Send to all users a message:
 
 ```php
-Every::toAll()
-    ->send(['text' => 'Hello Everyone!'])
-    ->log($this->update->getChat()->id)
-    ->notify();
-```
-
-Send to specific users a dynamic message:
-
-```php
-Every::to(fn () => BotUser::where('ban', false)->orderBy('created_at'))
-    ->send()
-    ->message(fn (BotUser $user) => ['text' => "Hello {$user->name}!"])
-    ->log($this->update->getChat()->id)
+Broadcast::toAll()
+    ->message(['text' => 'Hello Everyone!'])
+    ->log(update()->getChatId())
     ->notify();
 ```
 
 ### Logger
 Logger logging the notifier status
 
-Available builtin letters:
+Available builtin loggers:
 
 ```php
-new PvEveryLogger(CHAT_ID)
+new PvBroadcastLogger(CHAT_ID)
 ```
 
 Creating customize classes:
 
 ```php
-class CustomLogger implements EveryLogger
+class CustomLogger implements BroadcastLogger
 {
 
-    public function created(EveryJob $job) : void
+    public function created(BroadcastJob $job) : void
     {
         // ...
     }
     
-    public function log(EveryJob $job) : void
+    public function log(BroadcastJob $job) : void
     {
         // ...
     }
     
-    public function error(EveryJob $job, \Throwable $exception) : void
+    public function error(BroadcastJob $job, \Throwable $exception) : void
     {
         // ...
     }
     
-    public function completed(EveryJob $job) : void
+    public function completed(BroadcastJob $job) : void
     {
         // ...
     }
@@ -93,7 +84,7 @@ class CustomLogger implements EveryLogger
 Usage:
 
 ```php
-Every::toAll()
+Broadcast::toAll()
     ->send(['text' => 'Foo'])
     ->logger(new CustomLogger())
     ->notify();
@@ -107,19 +98,19 @@ like forcing channel joining
 
 ### Ready To Use
 
-Add handlers:
+Middleware:
 
 ```php
-$handler->callback(LockMiddleAction::class),
-LockRequest::for($this->context, 'main'), // For each groups
+withGlobalMiddleware(new LockMiddleware());
 ```
 
 Use the section:
 
 ```php
-$menu->schema([
-    [$menu->keyFor("🔒 Locks", LockResourceSection::class)],
-]);
+return messageResponse()
+    ->schema([
+        [key("🔒 Locks", [LockResourceSection::class, 'main'])], // todo
+    ]);
 ```
 
 ### Fast Use
@@ -127,14 +118,21 @@ $menu->schema([
 Works with locks:
 
 ```php
-$lock = Lock::add(...);  // To add a new lock
+$lock = Lock::push(...);  // To add a new lock
 $lock->delete(); // To delete the lock
 ```
 
-Adding the `required` to custom part of code:
+Using `useLock` hook:
 
 ```php
-LockRequest::for($this->context, 'main')->required();
+public function lockedContent()
+{
+    $lock = app(LockRequest::class)->useLock();
+    
+    yield from $lock();
+    
+    yield "Actual content";
+}
 ```
 
 
@@ -161,9 +159,9 @@ Change the config:
 ```php
 class UserIsOddCondition implements LockCondition
 {
-    public function show() : bool
+    public function show(): bool
     {
-        return BotUser::current()->id % 2 == 1;
+        return User::$current->id % 2 == 1;
     }
 }
 ```
@@ -174,61 +172,6 @@ Set globally condition in config:
     'lock' => [
         'condition' => UserIsOddCondition::class,
     ],
-```
-
-Or set in specific request:
-
-```php
-LockRequest::for($this->context, 'main')->withCondition(UserIsOddCondition::class)
-```
-
-
-
-### Customize
-
-Custom the alert dialog:
-
-```php
-class PostLockRequest extends LockRequest
-{
-
-    #[Find]
-    public Post $post;
-    
-    public function withPost(Post $post)
-    {
-        $this->post = $post;
-        return $this;
-    }
-
-    #[FixedDialog('lock:{group:slug}:{post:slug}')]
-    public function mainDialog(Dialog $dialog)
-    {
-        parent::mainDialog($dialog);
-        
-        $dialog
-            ->on('submit', function () use ($dialog)
-            {
-                if ($this->locks)
-                {
-                    $this->tell(__('panelkit::lock.submit_invalid'), alert: true);
-                    $dialog->reload();
-                }
-                else
-                {
-                    $this->update->getMessage()?->delete(ignore: true);
-                    PostSection::invokes('main', $this->post);
-                }
-            }
-            );
-    }
-}
-```
-
-Usage:
-
-```php
-PostLockRequest::for($this->context, 'main')->withPost($myPost)->required();
 ```
 
 
@@ -250,12 +193,10 @@ Creating customize classes:
 ```php
 class TgNotBannedAim implements TgAim
 {
-
     public function getQuery() : Builder
     {
         return BotUser::whereIsNull('ban_until')->orderBy('created_at');
     }
-
 }
 ```
 
@@ -265,46 +206,9 @@ class TgNotBannedAim implements TgAim
 Usage:
 
 ```php
-Every::make()
+Broadcast::make()
     ->aim(new TgNotBannedAim())
     ->send(['text' => 'Hi'])
-    ->notify();
-```
-
-
-### Letter
-Letter set the message value
-
-Available builtin letters:
-
-```php
-new TgFixedLetter(['text' => 'Hello Mmb!'])
-new TgEmptyLetter()
-new TgCustomLetter(new SerializableClosure(function () {...}))
-```
-
-Creating customize classes:
-
-```php
-class TgWelcomeLetter implements TgLetter
-{
-
-    public function getLetter(Model $record) : array
-    {
-        return [
-            'text' => "Welcome {$record->name}!",
-        ];
-    }
-
-}
-```
-
-Usage:
-
-```php
-Every::toAll()
-    ->send()
-    ->letter(new TgWelcomeLetter())
     ->notify();
 ```
 
@@ -325,9 +229,9 @@ Creating customize classes:
 ```php
 class TgHomeSectionNotifier implements TgNotifier
 {
-
-    public function notify(Model $record, array $message) : bool
+    public function notify(Model $record): bool
     {
+        evnetHandler()->
         return (bool) pov()
             ->user($record)
             ->catch()
@@ -335,14 +239,13 @@ class TgHomeSectionNotifier implements TgNotifier
                 fn () => HomeSection::invokes('main')
             );
     }
-
 }
 ```
 
 Usage:
 
 ```php
-Every::toAll()
+Broadcast::toAll()
     ->notifier(new TgHomeSectionNotifier())
     ->notify();
 ```
