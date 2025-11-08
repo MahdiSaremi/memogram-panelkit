@@ -10,6 +10,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Collection;
 use MemoGram\PanelKit\Broadcast\BroadcastLogger;
+use MemoGram\PanelKit\PanelKit;
 use MemoGram\PanelKit\Targets\Aim\TgAim;
 use MemoGram\PanelKit\Targets\Notifier\TgNotifier;
 
@@ -40,41 +41,43 @@ class BroadcastJob implements ShouldQueue
      */
     public function handle(): void
     {
-        $this->cachedCount = $this->aim->getQuery()->count();
+        PanelKit::runWithDefaultApi(function () {
+            $this->cachedCount = $this->aim->getQuery()->count();
 
-        if ($this->offset == 0) {
-            $this->logger?->created($this);
-        }
+            if ($this->offset == 0) {
+                $this->logger?->created($this);
+            }
 
-        $done = 0;
-        $startTime = time();
+            $done = 0;
+            $startTime = time();
 
-        while ($done < self::RECORDS_PER_HANDLE && $this->checkRemains() > 0 && time() - $startTime < self::TIMEOUT) {
-            $records = $this->aim->getQuery()->offset($this->offset)->take(self::RECORDS_PER_QUERY)->get();
+            while ($done < self::RECORDS_PER_HANDLE && $this->checkRemains() > 0 && time() - $startTime < self::TIMEOUT) {
+                $records = $this->aim->getQuery()->offset($this->offset)->take(self::RECORDS_PER_QUERY)->get();
 
-            $this->notifyRecords($records);
+                $this->notifyRecords($records);
 
-            $done += $records->count();
+                $done += $records->count();
 
-            usleep(self::SLEEP_PER_QUERY);
-        }
+                usleep(self::SLEEP_PER_QUERY);
+            }
 
-        if ($this->checkRemains() > 0) {
-            dispatch(
-                new BroadcastJob(
-                    $this->aim,
-                    $this->notifier,
-                    $this->logger,
-                    $this->offset,
-                    $this->successCount,
-                    $this->failedCount,
-                ),
-            )
-                ->delay(now()->seconds(59));
-            $this->logger?->log($this);
-        } else {
-            $this->logger?->completed($this);
-        }
+            if ($this->checkRemains() > 0) {
+                dispatch(
+                    new BroadcastJob(
+                        $this->aim,
+                        $this->notifier,
+                        $this->logger,
+                        $this->offset,
+                        $this->successCount,
+                        $this->failedCount,
+                    ),
+                )
+                    ->delay(now()->seconds(59));
+                $this->logger?->log($this);
+            } else {
+                $this->logger?->completed($this);
+            }
+        });
     }
 
     public function notifyRecords(Collection $records): void
