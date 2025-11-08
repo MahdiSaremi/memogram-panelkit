@@ -4,6 +4,7 @@ namespace MemoGram\PanelKit\Providers;
 
 use Illuminate\Support\ServiceProvider;
 use MemoGram\PanelKit\PanelKit;
+use MemoGram\PanelKit\PanelKitFactory;
 
 class PanelKitServiceProvider extends ServiceProvider
 {
@@ -54,7 +55,6 @@ class PanelKitServiceProvider extends ServiceProvider
         $langPath = __DIR__ . '/../../lang';
         $this->publishes([$langPath => lang_path('vendor/panelkit')], ['lang', 'panelkit:lang']);
 
-
         // todo
         // if (is_dir($langPath)) {
         $this->loadTranslationsFrom($langPath, 'panelkit');
@@ -78,8 +78,10 @@ class PanelKitServiceProvider extends ServiceProvider
 
     protected function registerSettings()
     {
-        if ($user = config('panelkit.user')) {
-            PanelKit::setUserClass($user);
-        }
+        $this->app->afterResolving(PanelKitFactory::class, function (PanelKitFactory $factory) {
+            if ($user = config('panelkit.user')) {
+                $factory->setUserClass($user);
+            }
+        });
     }
 }

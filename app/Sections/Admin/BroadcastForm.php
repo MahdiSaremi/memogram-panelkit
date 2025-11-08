@@ -13,7 +13,7 @@ class BroadcastForm
 {
     public function forwardForm()
     {
-        $form = useForm();
+        $form = useForm()->withCancel(fn() => $this->back());
 
         if ($form->missed('message')) {
             yield $form->prompt('message')
@@ -31,7 +31,7 @@ class BroadcastForm
 
     public function messageForm()
     {
-        $form = useForm();
+        $form = useForm()->withCancel(fn() => $this->back());
 
         if ($form->missed('message')) {
             yield $form->prompt('message')

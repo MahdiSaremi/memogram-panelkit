@@ -231,7 +231,7 @@ class TgHomeSectionNotifier implements TgNotifier
 {
     public function notify(Model $record): bool
     {
-        evnetHandler()->
+        evnetHandler()-> // todo
         return (bool) pov()
             ->user($record)
             ->catch()
