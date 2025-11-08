@@ -1,0 +1,37 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('lock_requires', function (Blueprint $table) {
+            $table->id();
+            $table->string('group')->default('main');
+            $table->boolean('is_public');
+            $table->bigInteger('chat_id');
+            $table->text('url');
+            $table->text('title');
+            $table->boolean('is_fake');
+            $table->unsignedInteger('cache_pass')->nullable();
+            $table->unsignedInteger('accept_delay')->nullable();
+            $table->unsignedInteger('member_limit_until')->nullable();
+            $table->timestamp('expire_at')->nullable();
+            $table->timestamps();
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('lock_requires');
+    }
+};

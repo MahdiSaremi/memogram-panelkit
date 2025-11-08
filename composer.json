@@ -1,0 +1,39 @@
+{
+    "name": "memogram/panelkit",
+    "description": "Panel kit for memogram",
+    "type": "library",
+    "authors": [
+        {
+            "name": "Mahdi Saremi",
+            "email": "mahdisarmi00@gmail.com"
+        }
+    ],
+    "extra": {
+        "laravel": {
+            "providers": [
+                "MemoGram\\PanelKit\\Providers\\PanelKitServiceProvider"
+            ]
+        }
+    },
+    "autoload": {
+        "psr-4": {
+            "MemoGram\\PanelKit\\": "app/",
+            "MemoGram\\PanelKit\\Database\\Factories\\": "database/factories/",
+            "MemoGram\\PanelKit\\Database\\Seeders\\": "database/seeders/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "MemoGram\\PanelKit\\Tests\\": "tests/"
+        }
+    },
+    "require": {
+        "laravel/framework": "^11.0|^12.0",
+        "memogram/framework": "dev-main"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "11.0@dev"
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
