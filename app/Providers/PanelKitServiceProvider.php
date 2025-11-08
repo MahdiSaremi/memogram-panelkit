@@ -80,12 +80,5 @@ class PanelKitServiceProvider extends ServiceProvider
         if ($user = config('panelkit.user')) {
             PanelKit::setUserClass($user);
         }
-
-        foreach (config('panelkit.back.user', []) as $module => $back) {
-            PanelKit::setUserBack($back[0], $back[1], $module == '*' ? null : $module);
-        }
-        foreach (config('panelkit.back.admin', []) as $module => $back) {
-            PanelKit::setAdminBack($back[0], $back[1], $module == '*' ? null : $module);
-        }
     }
 }
